@@ -1,0 +1,114 @@
+body {
+  color:white;
+  font:15px Arial, Helvetica, sans-serif;
+  background:#0C0D0D;
+  font-family: monospace;
+}
+
+.title {
+  text-align: center;
+  color:#ccc;
+  font-family: monospace;
+  font-size: 25pt;
+  margin-bottom: 5px;
+  margin-top: 5px;
+}
+
+.login{
+  margin-left: 230px;
+  font-family: monospace;
+}
+
+.logout1{
+  margin-left: 1200px;
+  display:inline;
+}
+
+.logout2{
+  display:inline;
+}
+
+.time1{
+margin-left: 370px;
+display: inline;
+}
+
+.time2{
+display: inline;
+}
+
+.button1{
+font-family: monospace;
+margin-top: 10px;
+margin-left: 320px;
+font-size: 15px;
+}
+
+.button2{
+font-family: monospace;
+margin-left: 490px;
+font-size: 15px;
+}
+
+.month_year{
+margin-top: -50px;
+margin-left: 600px;
+font-size: 40px;
+margin-bottom: 20px;
+}
+
+
+.month{
+display:inline;
+}
+
+.week{
+}
+
+.day{
+  min-width: 200px;
+  min-height:150px;
+  width:auto;
+  border: 0.5px solid white;
+  display: inline-block;
+  overflow: auto;
+}
+
+.sun{
+  margin-left: 70px;
+  display: inline;
+}
+
+.mon{
+  margin-left: 150px;
+  display: inline;
+}
+
+.tue{
+  margin-left: 140px;
+  display: inline;
+}
+
+.wed{
+  margin-left: 130px;
+  display: inline;
+}
+
+.thu{
+  margin-left: 120px;
+  display: inline;
+}
+
+.fri{
+  margin-left: 130px;
+  display: inline;
+}
+
+.sat{
+  margin-left: 150px;
+  display: inline;
+}
+
+.star_red{
+display:inline-block;
+}

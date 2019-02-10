@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang = "en-GB">
+   <head>
+     <meta charset = "utf-8">
+     <title> Chat Website </title>
+      <script src="/socket.io/socket.io.js"></script>
+      <link rel="stylesheet" type="text/css" href="css/main.css">
+      <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/themes/smoothness/jquery-ui.css">
+      <link href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.7.2/themes/start/jquery-ui.css" type="text/css" rel="Stylesheet" />
+      <style>
+      body {
+        color:white;
+        font:15px Arial, Helvetica, sans-serif;
+        background:#0C0D0D;
+        font-family: monospace;
+      }
+      .content {
+        text-align: center;
+        color:#ccc;
+        font-family: monospace;
+        font-size: 20pt;
+      }
+      </style>
+      <script>
+      document.addEventListener("DOMContentLoaded", function(){ // Load the webpage
+        $("#createRoom").hide();
+        $("#createPriveteRoom").hide();
+        $("#privateRoomDialog").hide();
+        $("#showCreator").hide();
+        $("#existingRoom").hide();
+        $("#chatlog").hide();
+        $("#privateChatlog").hide();
+        $("#list").hide();
+        $("#banUserList").hide();
+        $("#sendMessage_function").hide();
+        $("#changePassword_function").hide();
+        $("#newAd_function").hide();
+        $("#exitRoom").hide();
+        $("#creatorOperation_function").hide();
+      },false);
+      var currentUser = "None"; // Set current user
+      var currentRoom = "Loby"; // Set current room
+      var allRooms = []; // store all rooms
+      var socketio = io.connect();
+      socketio.on("message_to_client",function(data) { // send public message to all users
+         //Append an HR thematic break and the escaped HTML of the new message
+         document.getElementById("inputMessage").value = null;
+         if(data["currentUser"].prohibit){ // if the user is prohibited to send message in this room
+           if(window.currentUser === data["currentUser"].name){
+             alert("Your messages have been prohibited by the creator");
+           }
+         } else { // if the user is not prohibited in this room
+           document.getElementById("chatlog").appendChild(document.createElement("br"));
+           document.getElementById("chatlog").appendChild(document.createTextNode(data['currentUser'].name +": "+ data['message']));
+         }
+      });
+
+      function sendMessage(){ // send message function
+         var message = document.getElementById("inputMessage").value;
+         socketio.emit("message_to_server", {message:message, currentUser:window.currentUser});
+      }
+
+      socketio.on("prohibitAlert_to_client", function(data){ // if the user is prohibited to send messages in this room
+        var prohibitUser = data["currentUser"];
+        if(window.currentUser === prohibitUser.name){ // send a message to the user who is prohibited in this room
+          alert("Your messages have been prohibited by the creator");
+        }
+      });
+
+      socketio.on("image_to_client",function(data) { // send image message to all users
+        document.getElementById("chatlog").appendChild(document.createElement("br"));
+        document.getElementById("chatlog").innerHTML += data['currentUser']+": "+"<img src="+data['image']+" style='width:300px;height:250px;'>";
+      });
+      function sendImage(){ // send message function
+        var image = document.getElementById("inputImage").value;
+        socketio.emit("image_to_server", {image:image, currentRoom:window.currentRoom, currentUser:window.currentUser});
+      }
+
+      socketio.on("privateMessage_to_client",function(data){ // send private message to a specific user
+        document.getElementById("inputPrivateMessage").value = null;
+        document.getElementById("receiveMessageUser").value = null;
+        if(data['receiveUser'] === window.currentUser || data['currentUser']===window.currentUser){ // send private message
+          document.getElementById("privateChatlog").appendChild(document.createElement("br"));
+          document.getElementById("privateChatlog").appendChild(document.createTextNode("(private)" + data['currentUser'] +": "+ data['privateMessage']));}
+      });
+
+      function sendPrivateMessage(){ // send private message function
+        var privateMessage = document.getElementById("inputPrivateMessage").value;
+        var receiveUser = document.getElementById("receiveMessageUser").value;
+        socketio.emit("privateMessage_to_server", {privateMessage:privateMessage, receiveUser:receiveUser, currentUser:window.currentUser});
+      }
+
+      function login(){ // login function
+        var username = document.getElementById("username").value;
+        socketio.emit("login_to_server", {username:username});
+        window.currentUser = username;
+        $("#login_function").hide();
+        $("#createRoom").show();
+        $("#createPriveteRoom").show();
+        $("#existingRoom").show();
+        document.getElementById("currentUser").appendChild(document.createTextNode("Current username:" + username)); // show current username
+      }
+
+      function createRoom(){ // create a new public room function
+        var newRoomName = document.getElementById("newRoomName").value;
+        document.getElementById("newRoomName").value = null;
+        socketio.emit("createRoom_to_server", {newRoomName:newRoomName, currentUser:window.currentUser});
+      }
+
+      function createPriveteRoom(){ // create a new private room function
+        var newPrivateRoomName = document.getElementById("newPrivateRoomName").value;
+        var password = document.getElementById("password").value;
+        document.getElementById("newPrivateRoomName").value = null;
+        document.getElementById("password").value = null;
+        socketio.emit("createPrivateRoom_to_server", {newPrivateRoomName:newPrivateRoomName, password:password, currentUser:window.currentUser});
+      }
+
+      socketio.on("error_to_client",function(data){ // if room name exist, error message
+        if(data['currentUser'] === window.currentUser){
+          alert(data['errorMessage']);
+        }
+      });
+
+      socketio.on("privateError_to_client",function(data){ // if private room exist, error message
+        if(data['currentUser'] === window.currentUser){
+          alert(data['errorMessage']);
+        }
+      });
+
+      socketio.on("showRoom_to_client",function(data){ // show all rooms in a list to users
+        window.allRooms = data['allRooms'];
+        $("#existingRoom").empty();
+        for(var i = 0;i < window.allRooms.length;i++){ // show all room information
+          if(window.allRooms[i].private){ // show private room name
+            var room = document.createElement("li");
+            room.setAttribute("id", window.allRooms[i].roomName);
+            document.getElementById("existingRoom").appendChild(room);
+            document.getElementById(allRooms[i].roomName).appendChild(document.createTextNode("(private-require password)  " + window.allRooms[i].roomName + ", created by " + window.allRooms[i].creator));
+          } else { // show public room name
+            var room = document.createElement("li");
+            room.setAttribute("id", window.allRooms[i].roomName);
+            document.getElementById("existingRoom").appendChild(room);
+            document.getElementById(window.allRooms[i].roomName).appendChild(document.createTextNode("(public)  " + window.allRooms[i].roomName + ",created by " + window.allRooms[i].creator));
+          }
+          document.getElementById(window.allRooms[i].roomName).addEventListener("click", enterRoom, false);
+        }
+      });
+
+      function enterRoom(){ // enter room function
+        var roomName = $(this).attr('id');
+        currentRoom = roomName;
+        for(var i=0;i < window.allRooms.length; i++){
+          if(window.allRooms[i].roomName === roomName){
+            var password = window.allRooms[i].password; // if enter private room, need input password
+            if(window.allRooms[i].private){ // enter private room
+              var whichRoom = window.allRooms[i];
+              var passwordDialog = $("#privateRoomDialog").dialog({ // input password dialog
+                autoOpen: false,
+                height: 300,
+                width: 800,
+                modal: false,
+                buttons: {
+                  Enter: function(){
+                    var inputPassword = document.getElementById("inputPassword").value; // get password
+                    if(inputPassword === password){ // verify password Successfully
+                      $("#createRoom").hide();
+                      $("#existingRoom").hide();
+                      $("#createPriveteRoom").hide();
+                      $("#privateRoomDialog").hide();
+                      $("#showCreator").show();
+                      $("#chatlog").show();
+                      $("#banUserList").show();
+                      $("#list").show();
+                      $("#sendMessage_function").show();
+                      $("#exitRoom").show();
+                      $("#privateChatlog").show();
+                      $("#newAd_function").show();
+                      $("#changePassword_function").show();
+                      passwordDialog.dialog("close");
+                      $("p").remove("#currentRoomName");
+                      var room = document.createElement("p");
+                      room.setAttribute("id", "currentRoomName");
+                      document.getElementById("current").appendChild(room);
+                      document.getElementById("currentRoomName").appendChild(document.createTextNode(roomName));
+                      socketio.emit("enterRoom_to_server", {whichRoom:whichRoom, currentUser:window.currentUser});
+                    } else { // verify password error
+                      alert("Wrong Password");
+                    }
+                  },
+                  Cancel: function() { // close dialog
+                    passwordDialog.dialog("close");
+                  }
+                },
+                close: function() { // close dialog
+                  document.getElementById("inputPassword").val = null;
+                }});
+                passwordDialog.dialog("open");
+            } else { // enter public room
+              $("#existingRoom").hide();
+              $("#createRoom").hide();
+              $("#createPriveteRoom").hide();
+              $("#privateRoomDialog").hide();
+              $("#privateChatlog").show();
+              $("#chatlog").show();
+              $("#list").show();
+              $("#newAd_function").show();
+              $("#banUserList").show();
+              $("#sendMessage_function").show();
+              $("#exitRoom").show();
+              $("p").remove("#currentRoomName");
+              var room = document.createElement("p");
+              room.setAttribute("id", "currentRoomName");
+              document.getElementById("current").appendChild(room);
+              document.getElementById("currentRoomName").appendChild(document.createTextNode(window.allRooms[i].roomName));
+              socketio.emit("enterRoom_to_server", {whichRoom:window.allRooms[i], currentUser:window.currentUser});
+            }
+          }
+        }
+      }
+
+      socketio.on("enterRoom_to_client",function(data) { // when users enter room
+        var whichRoom = data["whichRoom"];
+        if(window.currentRoom === whichRoom.roomName){ // show all users in this room
+          $("#showCreator").show();
+          $("ul").remove("userList");
+          $("#userList").remove();
+          var userList = document.createElement("ul");
+          userList.setAttribute("id", "userList");
+          document.getElementById("list").appendChild(userList);
+          for(var i = 0;i < whichRoom.joinedUser.length;i++){
+            var user = document.createElement("li");
+            user.setAttribute("id", whichRoom.joinedUser[i]);
+            document.getElementById("userList").appendChild(user);
+            user.appendChild(document.createTextNode(whichRoom.joinedUser[i]));
+            if(window.currentUser === whichRoom.creator){ // add event listener to all usernames
+              document.getElementById(whichRoom.joinedUser[i]).addEventListener("click", creatorOperation, false);
+            }
+          }
+          $("#banList").remove(); // show all banned usernames in this room
+          var ban = document.createElement("ul");
+          ban.setAttribute("id", "banList");
+          document.getElementById("banUserList").appendChild(ban);
+          for(var i = 0;i<whichRoom.banList.length;i++){
+            var banTag = document.createElement("li");
+            banTag.setAttribute("id", i);
+            banTag.appendChild(document.createTextNode(whichRoom.banList[i]));
+            document.getElementById("banList").appendChild(banTag);
+          }
+          $("div").remove("#roomCreator"); // show creator of this room
+          var creatorTag = document.createElement("div");
+          creatorTag.setAttribute("id", "roomCreator");
+          document.getElementById("showCreator").appendChild(creatorTag);
+          document.getElementById("roomCreator").appendChild(document.createTextNode(whichRoom.creator));
+        }
+      });
+
+      socketio.on("banRoomError_to_client", function(data){ // if the user is banned in this room, show enter room error message when entering this room
+        var whichRoom = data["whichRoom"];
+        var currentUser = data["currentUser"];
+        if(currentUser === window.currentUser){ // send error message
+          currentRoom = "lobby";
+          $("#existingRoom").show();
+          $("#createRoom").show();
+          $("#createPriveteRoom").show();
+          $("#privateRoomDialog").hide();
+          $("#showCreator").hide();
+          $("#chatlog").hide();
+          $("#privateChatlog").hide();
+          $("#list").hide();
+          $("#banUserList").hide();
+          $("#newAd_function").hide();
+          $("#sendMessage_function").hide();
+          $("#exitRoom").hide();
+          $("#changePassword_function").hide();
+          $("p").remove("#currentRoomName");
+          var room = document.createElement("p");
+          room.setAttribute("id", "currentRoomName");
+          document.getElementById("current").appendChild(room);
+          document.getElementById("currentRoomName").appendChild(document.createTextNode("Loby"));
+          alert("You have been permanently banned into this room by the creator");
+        }
+      });
+
+      function creatorOperation(){ // creator operation include ban,kick and prohibit sending messages
+        var userName = $(this).attr('id');
+        var operate = document.createElement("div");
+        operate.setAttribute("id", "operation");
+        document.getElementById("operateForWho").appendChild(operate);
+        document.getElementById("operation").appendChild(document.createTextNode(userName));
+        var userDialog = $("#creatorOperation_function").dialog({ // operation dialog
+          autoOpen: false,
+          height: 200,
+          width: 800,
+          modal: false,
+          buttons: {
+            Wordsprohibited: function(){ // prohibit sending messages function
+              socketio.emit("prohibitUser_to_server", {userName:userName});
+              $("#creatorOperation_function").dialog("close");
+            },
+            Kick: function(){ // kick users function
+              $("#creatorOperation_function").dialog("close");
+              socketio.emit("kickUser_to_server",{userName:userName});
+            },
+            Ban: function(){ // ban users function
+              $("#creatorOperation_function").dialog("close");
+              socketio.emit("banUser_to_server",{userName:userName,currentRoom:window.currentRoom});
+              socketio.emit("kickUser_to_server",{userName:userName});
+            },
+            Cancel: function() {
+              userDialog.dialog("close");
+            }
+          },
+          close: function() {
+            $("#operation").remove();
+          }});
+          userDialog.dialog("open");
+      }
+
+      socketio.on("prohibitUser_to_client", function(data){ // prohibit user to send message, notice this user
+        var prohibitUser = data["prohibitUser"];
+        if(window.currentUser === prohibitUser.name){
+          alert("Your messages have been prohibited by the creator");
+        }
+      });
+
+      socketio.on("kickUser_to_client", function(data){ // kick users
+        var userName = data["userName"];
+        var kickWhichRoom = data["kickWhichRoom"];
+        if(window.currentRoom === kickWhichRoom.roomName){ // remove this username from username list in this room
+          $("ul").remove("#userList");
+          var userList = document.createElement("ul");
+          userList.setAttribute("id", "userList");
+          document.getElementById("list").appendChild(userList);
+          for(var i = 0;i < kickWhichRoom.joinedUser.length;i++){ // update user list
+            var user = document.createElement("li");
+            user.setAttribute("id", kickWhichRoom.joinedUser[i]);
+            document.getElementById("userList").appendChild(user);
+            user.appendChild(document.createTextNode(kickWhichRoom.joinedUser[i]));
+            if(window.currentUser === kickWhichRoom.creator){
+              document.getElementById(kickWhichRoom.joinedUser[i]).addEventListener("click", creatorOperation, false);
+            }
+          }
+          $("div").remove("#roomCreator");
+          var creatorTag = document.createElement("div");
+          creatorTag.setAttribute("id", "roomCreator");
+          document.getElementById("showCreator").appendChild(creatorTag);
+          document.getElementById("roomCreator").appendChild(document.createTextNode(kickWhichRoom.creator));
+          if(window.currentUser === userName){ // kicked user return back to Lobby
+            var exitRoomName = currentRoom;
+            currentRoom = "lobby";
+            $("#existingRoom").show();
+            $("#createRoom").show();
+            $("#createPriveteRoom").show();
+            $("#privateRoomDialog").hide();
+            $("#showCreator").hide();
+            $("#chatlog").hide();
+            $("#privateChatlog").hide();
+            $("#list").hide();
+            $("#banUserList").hide();
+            $("#sendMessage_function").hide();
+            $("#exitRoom").hide();
+            $("#newAd_function").hide();
+            $("#changePassword_function").hide();
+            $("p").remove("#currentRoomName");
+            var room = document.createElement("p");
+            room.setAttribute("id", "currentRoomName");
+            document.getElementById("current").appendChild(room);
+            document.getElementById("currentRoomName").appendChild(document.createTextNode("Loby"));
+          }
+        }
+      });
+
+      socketio.on("banUser_to_client", function(data){ // ban user to enter this room
+        var banCurrentRoom = data["banCurrentRoom"];
+        for(var i = 0;i<banCurrentRoom.banList.length;i++){ // add this username into ban list in this room
+          var banTag = document.createElement("li");
+          banTag.setAttribute("id", i);
+          banTag.appendChild(document.createTextNode(banCurrentRoom.banList[i]));
+          document.getElementById("banList").appendChild(banTag);
+        }
+      });
+
+      socketio.on("newAd_to_client", function(data){ // creator can change private room password
+        var newAdRoom = data["newAdRoom"];
+        var newAd = data["newAd"];
+        if(window.currentRoom === newAdRoom.roomName){
+          alert(newAd);
+        }
+      });
+
+      socketio.on("newAdError_to_client", function(data){ // other users cannot change password, only creator can change password
+        if(window.currentUser === data["currentUser"]){ // send error messages to other users
+          alert("You are not the creator of this room, cannot send announcement");
+          document.getElementById("newAd").value = null;
+        }
+      });
+
+      function newAd(){ // change password function
+        var newAd = document.getElementById("newAd").value;
+        document.getElementById("newAd").value = null;
+        socketio.emit("newAd_to_server", {newAd:newAd,currentUser:window.currentUser,currentRoom:window.currentRoom});
+      }
+
+      socketio.on("changePassword_to_client", function(data){ // creator can change private room password
+        var changePasswordRoom = data["changePasswordRoom"];
+        if(window.currentRoom === changePasswordRoom.roomName){
+          if(window.currentUser === changePasswordRoom.creator){
+            alert("Change Password Successfully");
+          }
+        }
+      });
+
+      socketio.on("changePasswordError_to_client", function(data){ // other users cannot change password, only creator can change password
+        if(window.currentUser === data["currentUser"]){ // send error messages to other users
+          alert("You are not the creator of this room, cannot change password");
+          document.getElementById("newPassword").value = null;
+        }
+      });
+
+      function changePassword(){ // change password function
+        var newPassword = document.getElementById("newPassword").value;
+        document.getElementById("newPassword").value = null;
+        socketio.emit("changePassword_to_server", {newPassword:newPassword,currentUser:window.currentUser,currentRoom:window.currentRoom});
+      }
+
+      socketio.on("exitRoom_to_client", function(data){ //exit current room
+        $("#userList").remove(); // remove this username the from user list
+        whichRoom = data["exitWhichRoom"];
+        for(var i = 0;i < whichRoom.joinedUser.length;i++){ // update the user list in this room
+          var userList = document.createElement("ul");
+          userList.setAttribute("id", "userList");
+          document.getElementById("list").appendChild(userList);
+          var user = document.createElement("li");
+          user.setAttribute("id", whichRoom.joinedUser[i]);
+          document.getElementById("userList").appendChild(user);
+          user.appendChild(document.createTextNode(whichRoom.joinedUser[i]));
+          if(window.currentUser === whichRoom.creator){ // add event listener to every username
+            document.getElementById(whichRoom.joinedUser[i]).addEventListener("click", creatorOperation, false);
+          }
+        }
+        $("div").remove("#roomCreator"); // show creator name to all users
+        var creatorTag = document.createElement("div");
+        creatorTag.setAttribute("id", "roomCreator");
+        document.getElementById("showCreator").appendChild(creatorTag);
+        document.getElementById("roomCreator").appendChild(document.createTextNode(whichRoom.creator));
+      });
+
+      function exit(){ // exit function, user return back to lobby
+        var exitRoomName = currentRoom;
+        currentRoom = "lobby";
+        $("#existingRoom").show();
+        $("#createRoom").show();
+        $("#createPriveteRoom").show();
+        $("#privateRoomDialog").hide();
+        $("#showCreator").hide();
+        $("#chatlog").hide();
+        $("#privateChatlog").hide();
+        $("#list").hide();
+        $("#banUserList").hide();
+        $("#newAd_function").hide();
+        $("#sendMessage_function").hide();
+        $("#exitRoom").hide();
+        $("p").remove("#currentRoomName");
+        var room = document.createElement("p");
+        room.setAttribute("id", "currentRoomName");
+        document.getElementById("current").appendChild(room);
+        document.getElementById("currentRoomName").appendChild(document.createTextNode("Loby"));
+        socketio.emit("exitRoom_to_server", {exitRoomName:exitRoomName, currentUser:window.currentUser});
+      }
+
+      </script>
+   </head>
+   <body>
+     <div id = "login_function">
+       <p class="content">Input Username to Login First</p>
+       <p class = "content">Input Username: <input type="text" id = "username">
+       <button onclick="login()">Log In</button></p>
+     </div>
+     <div id = "currentUser">
+     </div>
+     <hr />
+    <div id = "createRoom">
+       <p class="content"> Room Name: <input type = "text" id="newRoomName">
+       <button onclick="createRoom()">Create New Room</button></p>
+    </div>
+    <div id = "createPriveteRoom">
+       <p class="content">
+         Room Name: <input type = "text" id="newPrivateRoomName">
+         Room Password: <input type = "password" id="password">
+       <button onclick="createPriveteRoom()">Create New Private Room</button>
+     </p>
+    </div>
+    <hr />
+    <ul id="existingRoom">
+    </ul>
+    <div id = "privateRoomDialog">
+       <p class="content"> Room Password: <input type = "password" id="inputPassword"></p>
+    </div>
+    <hr />
+    <div  class = "content" id = "current"> Current Room:
+      <p id = "currentRoomName" class="content">Lobby</p>
+    </div>
+    <hr />
+    <div id="list">All Users in This Room
+      <ul id="userList"> </ul>
+    </div>
+    <div id="banUserList">All Users Banned
+      <ul id="banList"></ul>
+    </div>
+    <div id="showCreator">Creator of This Room:</div>
+    <div id="sendMessage_function">
+       <p class="content">Send Public Message <input type="text" id="inputMessage">
+       <button onclick="sendMessage()">send</button></p>
+       <p class="content">
+         Send Private Message <input type="text" id="inputPrivateMessage">
+         User to receive message <input type="text" id="receiveMessageUser">
+         <button onclick="sendPrivateMessage()">send</button>
+       </p>
+       <p class="content">
+         Input Image's Name <input type="text" id="inputImage">
+         <button onclick="sendImage()">send</button>
+       </p>
+    </div>
+    <hr />
+    <div id="chatlog"> Public Chat Message
+    </div>
+    <div id="privateChatlog"> Private Chat Message
+    </div>
+    <hr />
+    <div id="changePassword_function">
+      <p class = "content">Change Password for this Room<input type="password" id="newPassword">
+        <button onclick="changePassword()">Change</button>
+      </p>
+    </div>
+    <div id="newAd_function">
+      <p class = "content">Announcement <input type="text" id="newAd">
+        <button onclick="newAd()">send</button>
+      </p>
+    </div>
+    <div id="exitRoom">
+      <p class="content">
+        Exit Current Room
+        <button onclick="exit()">Exit Room</button>
+      </p>
+    </div>
+    <div id="creatorOperation_function">
+      <div id="operateForWho">Operation for this User: </div>
+    </div>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.0/jquery.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/jquery-ui.js"></script>
+    <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+    <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.4.3/jquery.min.js"></script>
+    <script src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.5/jquery-ui.min.js"></script>
+  </body>
+</html>

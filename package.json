@@ -1,0 +1,19 @@
+{
+  "name": "chat-site",
+  "version": "1.0.0",
+  "description": "Cool Chat Site",
+  "main": "chat-server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://YangJin503S@bitbucket.org/cse330/fall2018-module6-group-467364-467527.git"
+  },
+  "author": "Jin",
+  "license": "ISC",
+  "homepage": "https://bitbucket.org/cse330/fall2018-module6-group-467364-467527#readme",
+  "dependencies": {
+    "socket.io": "^2.1.1"
+  }
+}
